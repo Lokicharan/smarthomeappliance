@@ -1,4 +1,4 @@
-import { useState, useEffect} from "react";
+import React, { useState, useEffect, useCallback } from "react";
 
 const BLYNK_TOKEN = "jT4lEcgTcyFwVhmpOYT3RJoWO0giDz6t";
 const BASE_URL = "https://blynk.cloud/external/api";
@@ -81,7 +81,6 @@ function DeviceCard({ icon, label, isOn, onToggle, start, stop, onStartChange, o
       position: "relative",
       overflow: "hidden"
     }}>
-      {/* Glow orb behind card */}
       {isOn && (
         <div style={{
           position: "absolute", top: -40, right: -40, width: 140, height: 140,
@@ -90,7 +89,6 @@ function DeviceCard({ icon, label, isOn, onToggle, start, stop, onStartChange, o
         }} />
       )}
 
-      {/* Header row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{
@@ -106,7 +104,6 @@ function DeviceCard({ icon, label, isOn, onToggle, start, stop, onStartChange, o
           </div>
         </div>
 
-        {/* Toggle */}
         <div
           onClick={onToggle}
           style={{
@@ -126,10 +123,8 @@ function DeviceCard({ icon, label, isOn, onToggle, start, stop, onStartChange, o
         </div>
       </div>
 
-      {/* Divider */}
       <div style={{ height: 1, background: "rgba(255,255,255,0.07)", marginBottom: 20 }} />
 
-      {/* Automation section */}
       <div style={{ marginBottom: 6 }}>
         <div style={{
           display: "flex", alignItems: "center", gap: 6, marginBottom: 14,
@@ -209,12 +204,12 @@ export default function App() {
   const [lightAuto, setLightAuto] = useState(saved.lightAuto);
   const [fanAuto, setFanAuto] = useState(saved.fanAuto);
 
-  const showToast = (msg, type = "success") => {
+  const showToast = useCallback((msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
-  };
+  }, []);
 
-  const playAlert = () => {
+  const playAlert = useCallback(() => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const o = ctx.createOscillator();
@@ -226,9 +221,10 @@ export default function App() {
       g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
       o.start(); o.stop(ctx.currentTime + 0.5);
     } catch {}
-  };
+  }, []);
 
-  const fetchStatus = async () => {
+  // ✅ Fix 1: Wrapped in useCallback
+  const fetchStatus = useCallback(async () => {
     try {
       const [lRes, fRes] = await Promise.all([
         fetch(`${BASE_URL}/get?token=${BLYNK_TOKEN}&V0`),
@@ -239,23 +235,25 @@ export default function App() {
     } catch {
       showToast("Could not connect to Blynk", "error");
     }
-  };
+  }, [showToast]);
 
-  const updateLight = async (value) => {
+  // ✅ Fix 2: Wrapped in useCallback
+  const updateLight = useCallback(async (value) => {
     try {
       await fetch(`${BASE_URL}/update?token=${BLYNK_TOKEN}&V0=${value}`);
       setLight(value === 1);
       if (value === 0) playAlert();
     } catch {}
-  };
+  }, [playAlert]);
 
-  const updateFan = async (value) => {
+  // ✅ Fix 3: Wrapped in useCallback
+  const updateFan = useCallback(async (value) => {
     try {
       await fetch(`${BASE_URL}/update?token=${BLYNK_TOKEN}&V1=${value}`);
       setFan(value === 1);
       if (value === 0) playAlert();
     } catch {}
-  };
+  }, [playAlert]);
 
   const saveLightAutomation = () => {
     if (!lightStart || !lightStop) { showToast("Set both start and stop times for Light", "error"); return; }
@@ -273,45 +271,35 @@ export default function App() {
     showToast("🌀 Fan schedule saved & active");
   };
 
-  // Persist any time input changes
- useEffect(() => {
-  fetchStatus();
+  useEffect(() => {
+    fetchStatus();
 
-  const interval = setInterval(() => {
-    const now = new Date();
-    const ist = new Date(
-      now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-    );
+    const interval = setInterval(() => {
+      const now = new Date();
+      const ist = new Date(
+        now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+      );
 
-    const current = `${ist.getHours()
-      .toString()
-      .padStart(2, "0")}:${ist.getMinutes()
-      .toString()
-      .padStart(2, "0")}`;
+      const current = `${ist.getHours().toString().padStart(2, "0")}:${ist.getMinutes().toString().padStart(2, "0")}`;
 
-    if (lightAuto) {
-      if (current === lightStart) updateLight(1);
-      if (current === lightStop) updateLight(0);
-    }
+      if (lightAuto) {
+        if (current === lightStart) updateLight(1);
+        if (current === lightStop) updateLight(0);
+      }
 
-    if (fanAuto) {
-      if (current === fanStart) updateFan(1);
-      if (current === fanStop) updateFan(0);
-    }
-  }, 60000);
+      if (fanAuto) {
+        if (current === fanStart) updateFan(1);
+        if (current === fanStop) updateFan(0);
+      }
+    }, 60000);
 
-  return () => clearInterval(interval);
-}, [
-  lightAuto,
-  fanAuto,
-  lightStart,
-  lightStop,
-  fanStart,
-  fanStop,
-  fetchStatus,
-  updateFan,
-  updateLight
-]);
+    return () => clearInterval(interval);
+  }, [
+    lightAuto, fanAuto,
+    lightStart, lightStop,
+    fanStart, fanStop,
+    fetchStatus, updateLight, updateFan
+  ]);
 
   return (
     <div style={{
@@ -320,7 +308,6 @@ export default function App() {
       fontFamily: "'Rajdhani', sans-serif",
       position: "relative", overflow: "hidden"
     }}>
-      {/* Google Fonts */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
@@ -331,7 +318,6 @@ export default function App() {
         button:hover { opacity: 0.85 !important; transform: translateY(-1px); }
       `}</style>
 
-      {/* Animated grid background */}
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
         backgroundImage: "linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px)",
@@ -339,13 +325,11 @@ export default function App() {
         animation: "gridScroll 8s linear infinite"
       }} />
 
-      {/* Ambient blobs */}
       <div style={{ position:"fixed", top:-100, left:-100, width:400, height:400, borderRadius:"50%", background:"rgba(0,150,255,0.04)", filter:"blur(80px)", pointerEvents:"none" }} />
       <div style={{ position:"fixed", bottom:-100, right:-100, width:400, height:400, borderRadius:"50%", background:"rgba(0,255,180,0.04)", filter:"blur(80px)", pointerEvents:"none" }} />
 
       <div style={{ position: "relative", zIndex: 1, maxWidth: 720, margin: "0 auto", animation: "fadeSlide 0.6s ease" }}>
 
-        {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
@@ -363,10 +347,8 @@ export default function App() {
           }}>IoT DASHBOARD</h1>
         </div>
 
-        {/* Clock */}
         <Clock />
 
-        {/* Status row */}
         <div style={{
           display: "flex", justifyContent: "center", gap: 20, marginBottom: 36,
           padding: "16px 24px", borderRadius: 14,
@@ -390,7 +372,6 @@ export default function App() {
           ))}
         </div>
 
-        {/* Device cards */}
         <div style={{ display: "flex", justifyContent: "center", gap: 28, flexWrap: "wrap" }}>
           <DeviceCard
             icon="💡" label="LIGHT" isOn={light}
@@ -410,7 +391,6 @@ export default function App() {
           />
         </div>
 
-        {/* Footer */}
         <div style={{
           textAlign: "center", marginTop: 40,
           fontFamily: "'Rajdhani', sans-serif", fontSize: 11,
@@ -420,7 +400,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Toast notification */}
       {toast && (
         <div style={{
           position: "fixed", bottom: 30, left: "50%", transform: "translateX(-50%)",
