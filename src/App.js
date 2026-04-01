@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect} from "react";
 
 const BLYNK_TOKEN = "jT4lEcgTcyFwVhmpOYT3RJoWO0giDz6t";
 const BASE_URL = "https://blynk.cloud/external/api";
@@ -274,27 +274,44 @@ export default function App() {
   };
 
   // Persist any time input changes
-  useEffect(() => {
-    saveTimers({ lightStart, lightStop, fanStart, fanStop, lightAuto, fanAuto });
-  }, [lightStart, lightStop, fanStart, fanStop, lightAuto, fanAuto]);
+ useEffect(() => {
+  fetchStatus();
 
-  useEffect(() => {
-    fetchStatus();
-    const interval = setInterval(() => {
-      const now = new Date();
-      const ist = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-      const current = `${ist.getHours().toString().padStart(2, "0")}:${ist.getMinutes().toString().padStart(2, "0")}`;
-      if (lightAuto) {
-        if (current === lightStart) updateLight(1);
-        if (current === lightStop) updateLight(0);
-      }
-      if (fanAuto) {
-        if (current === fanStart) updateFan(1);
-        if (current === fanStop) updateFan(0);
-      }
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [lightAuto, fanAuto, lightStart, lightStop, fanStart, fanStop]);
+  const interval = setInterval(() => {
+    const now = new Date();
+    const ist = new Date(
+      now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
+
+    const current = `${ist.getHours()
+      .toString()
+      .padStart(2, "0")}:${ist.getMinutes()
+      .toString()
+      .padStart(2, "0")}`;
+
+    if (lightAuto) {
+      if (current === lightStart) updateLight(1);
+      if (current === lightStop) updateLight(0);
+    }
+
+    if (fanAuto) {
+      if (current === fanStart) updateFan(1);
+      if (current === fanStop) updateFan(0);
+    }
+  }, 60000);
+
+  return () => clearInterval(interval);
+}, [
+  lightAuto,
+  fanAuto,
+  lightStart,
+  lightStop,
+  fanStart,
+  fanStop,
+  fetchStatus,
+  updateFan,
+  updateLight
+]);
 
   return (
     <div style={{
